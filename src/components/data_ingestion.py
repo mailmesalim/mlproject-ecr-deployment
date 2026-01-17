@@ -9,6 +9,8 @@ from src.components.data_transformation import DataTransformation
 from src.components.data_transformation import DataTransformationConfig
 from src.components.model_trainer import ModelTrainer
 from src.components.model_trainer import ModelTrainerConfig
+import warnings
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 @dataclass
 class DataIngestionConfig:
