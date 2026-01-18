@@ -85,6 +85,7 @@ Once everything is set up, every push to the `main` branch will trigger the GitH
 2. Push the image to AWS ECR.
 3. Pull the image on your EC2 instance.
 4. Run the application on port 8080.
+5.Port mentioned in Dockerfile should be same as the port mentioned in the GitHub Actions workflow. and in EC2 instance security group should allow the traffic on that port.
 
 ## Verified Steps
 1. [x] Docker Build
