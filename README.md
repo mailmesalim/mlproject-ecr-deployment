@@ -78,16 +78,67 @@ Go to **Settings** -> **Secrets and variables** -> **Actions** -> **New reposito
 | `AWS_ECR_LOGIN_URI` | ECR Registry URL (without repo name) | `566373416292.dkr.ecr.us-east-1.amazonaws.com` |
 | `ECR_REPOSITORY_NAME` | ECR Repository Name | `simple-app` |
 
-## 4. Deployment
+## 4. Azure Deployment
+
+### 1. Azure Container Registry (ACR) Setup
+Create an Azure Container Registry to store your Docker images.
+
+```bash
+# Create a Resource Group
+az group create --name mlproject-rg --location eastus
+
+# Create ACR
+az acr create --resource-group mlproject-rg --name <your-acr-name> --sku Basic --admin-enabled true
+
+# Login to ACR (Local)
+az acr login --name <your-acr-name>
+```
+
+### 2. Azure Web App Setup
+Create an App Service Plan and Web App for Containers.
+
+```bash
+# Create App Service Plan
+az appservice plan create --name mlproject-plan --resource-group mlproject-rg --sku B1 --is-linux
+
+# Create Web App
+az webapp create --resource-group mlproject-rg --plan mlproject-plan --name <your-webapp-name> --deployment-container-image-name <your-acr-name>.azurecr.io/<your-webapp-name>:latest
+```
+
+### 3. Configure Secrets in GitHub
+Run the following command to generate credentials for the `AZURE_CREDENTIALS` secret:
+
+```bash
+az ad sp create-for-rbac --name "mlproject-cicd" --role contributor --scopes /subscriptions/<subscription-id>/resourceGroups/mlproject-rg --sdk-auth
+```
+*Copy the entire JSON output.*
+
+Add the following secrets to your GitHub Repository:
+
+| Secret Name | Description | Source |
+|-------------|-------------|--------|
+| `AZURE_CREDENTIALS` | Service Principal JSON | Output of verifying `az ad sp ...` command above |
+| `ACR_LOGIN_SERVER` | ACR Login Server | `<your-acr-name>.azurecr.io` |
+| `ACR_USERNAME` | ACR Admin Username | `az acr credential show -n <your-acr-name> --query "username" -o tsv` |
+| `ACR_PASSWORD` | ACR Admin Password | `az acr credential show -n <your-acr-name> --query "passwords[0].value" -o tsv` |
+| `AZURE_WEBAPP_NAME` | Name of your Web App | `<your-webapp-name>` |
+
+## 5. Deployment
 
 Once everything is set up, every push to the `main` branch will trigger the GitHub Action workflow which will:
 1. Build the Docker image.
-2. Push the image to AWS ECR.
-3. Pull the image on your EC2 instance.
-4. Run the application on port 8080.
-5.Port mentioned in Dockerfile should be same as the port mentioned in the GitHub Actions workflow. and in EC2 instance security group should allow the traffic on that port.
+2. Push the image to AWS ECR / Azure ACR.
+3. Pull the image on your EC2 instance / Deploy to Azure Web App.
+4. Run the application on port 8080 (AWS) or 80/5000 (Azure).
+
+### Important Note on Ports
+- **Dockerfile**: Ensure your app exposes the correct port (e.g., `EXPOSE 5000`).
+- **AWS**: Ensure EC2 Security Group allows traffic on the application port (e.g., 8080 or 5000).
+- **Azure**: Add an Application Setting `WEBSITES_PORT=5000` if your app does not listen on port 80.
 
 ## Verified Steps
 1. [x] Docker Build
 2. [x] Github Workflow
 3. [x] IAM User in AWS
+4. [ ] Azure Deployment
+
